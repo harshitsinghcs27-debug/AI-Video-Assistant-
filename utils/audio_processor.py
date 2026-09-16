@@ -64,7 +64,7 @@ def download_audio(url: str) -> str:
 
     cookie_file = None
     cookie_data = os.getenv("YOUTUBE_COOKIES", "").strip()
-    if cookie_data:
+    if cookie_data and is_netscape_cookie_data(cookie_data):
         cookie_file = tempfile.NamedTemporaryFile(
             mode="w", encoding="utf-8", suffix=".txt", delete=False
         )
@@ -78,6 +78,14 @@ def download_audio(url: str) -> str:
             "preferredcodec": "mp3",
             "preferredquality": "192",
         }]
+
+    invalid_cookie_message = (
+        " Ignoring YOUTUBE_COOKIES because it is not Netscape format; "
+        "remove that secret for public videos or replace it with an exported "
+        "Netscape cookie file."
+        if cookie_data and not is_netscape_cookie_data(cookie_data)
+        else ""
+    )
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -102,15 +110,28 @@ def download_audio(url: str) -> str:
                 "Update yt-dlp and, for restricted videos, add a Netscape-format "
                 "YOUTUBE_COOKIES secret in Streamlit. Public videos may require "
                 "a different video URL. "
-                f"Details: {details}"
+                f"Details: {details}{invalid_cookie_message}"
             ) from exc
-        raise RuntimeError(f"Failed to download audio from YouTube: {details}") from exc
+        raise RuntimeError(
+            f"Failed to download audio from YouTube: {details}{invalid_cookie_message}"
+        ) from exc
     finally:
         if cookie_file:
             try:
                 os.unlink(cookie_file.name)
             except OSError:
                 pass
+
+
+def is_netscape_cookie_data(cookie_data: str) -> bool:
+    """Check that cookie text is suitable for yt-dlp's cookiefile option."""
+    lines = [line.strip() for line in cookie_data.splitlines() if line.strip()]
+    if not lines:
+        return False
+    if lines[0].startswith("-----BEGIN") or lines[0].startswith("{"):
+        return False
+    data_lines = [line for line in lines if not line.startswith("#")]
+    return bool(data_lines) and all(len(line.split("\t")) == 7 for line in data_lines)
 
 
 def is_youtube_url(source: str) -> bool:
