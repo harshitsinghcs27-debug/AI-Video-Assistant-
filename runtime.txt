@@ -1,0 +1,4 @@
+python-3.11
+/home/adminuser/venv/lib/python3.14/
+pydub
+pyaudioop
