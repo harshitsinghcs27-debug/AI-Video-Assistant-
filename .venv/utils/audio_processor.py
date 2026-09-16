@@ -48,11 +48,6 @@ def download_audio(url: str) -> str:
         "noplaylist": True,
         "no_warnings": True,
         "restrictfilenames": True,
-        "extractor_args": {
-            "youtube": {
-                "player_client": ["visionos"],
-            },
-        },
         "http_headers": {
             "User-Agent": (
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -87,24 +82,44 @@ def download_audio(url: str) -> str:
         else ""
     )
 
-    try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            filename = ydl.prepare_filename(info)
-            if is_youtube_url(url):
-                filename = os.path.splitext(filename)[0] + ".mp3"
-            if not os.path.exists(filename):
-                raise FileNotFoundError(f"Downloaded audio was not created: {filename}")
-            return filename
-    except yt_dlp.utils.DownloadError as exc:
+    def cleanup_cookie_file() -> None:
+        if cookie_file:
+            try:
+                os.unlink(cookie_file.name)
+            except OSError:
+                pass
+
+    last_error = None
+    for player_client in ("visionos", "web_embedded", "android", "ios"):
+        attempt_opts = dict(ydl_opts)
+        attempt_opts["extractor_args"] = {
+            "youtube": {"player_client": [player_client]}
+        }
+        try:
+            with yt_dlp.YoutubeDL(attempt_opts) as ydl:
+                info = ydl.extract_info(url, download=True)
+                filename = ydl.prepare_filename(info)
+                if is_youtube_url(url):
+                    filename = os.path.splitext(filename)[0] + ".mp3"
+                if not os.path.exists(filename):
+                    raise FileNotFoundError(f"Downloaded audio was not created: {filename}")
+                cleanup_cookie_file()
+                return filename
+        except yt_dlp.utils.DownloadError as exc:
+            last_error = exc
+
+    if last_error:
+        exc = last_error
         details = str(exc)
         if "Please sign in" in details or "private" in details.lower():
+            cleanup_cookie_file()
             raise RuntimeError(
                 "YouTube could not provide this video without sign-in. "
                 "Try a public video URL, update yt-dlp, or use a local file. "
                 f"Details: {details}"
             ) from exc
         if "403" in details or "Forbidden" in details:
+            cleanup_cookie_file()
             raise RuntimeError(
                 "YouTube rejected the audio request (HTTP 403). "
                 "Update yt-dlp and, for restricted videos, add a Netscape-format "
@@ -112,15 +127,12 @@ def download_audio(url: str) -> str:
                 "a different video URL. "
                 f"Details: {details}{invalid_cookie_message}"
             ) from exc
+        cleanup_cookie_file()
         raise RuntimeError(
             f"Failed to download audio from YouTube: {details}{invalid_cookie_message}"
         ) from exc
-    finally:
-        if cookie_file:
-            try:
-                os.unlink(cookie_file.name)
-            except OSError:
-                pass
+    cleanup_cookie_file()
+    raise RuntimeError("Failed to download audio from YouTube: no compatible player client.")
 
 
 def is_netscape_cookie_data(cookie_data: str) -> bool:
