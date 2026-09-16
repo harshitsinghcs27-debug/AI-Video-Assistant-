@@ -2,6 +2,7 @@ import os
 import re
 import shutil
 import sys
+import tempfile
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse, urlunparse
 
@@ -47,7 +48,24 @@ def download_audio(url: str) -> str:
         "noplaylist": True,
         "no_warnings": True,
         "restrictfilenames": True,
+        "http_headers": {
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/131.0.0.0 Safari/537.36"
+            ),
+        },
     }
+
+    cookie_file = None
+    cookie_data = os.getenv("YOUTUBE_COOKIES", "").strip()
+    if cookie_data:
+        cookie_file = tempfile.NamedTemporaryFile(
+            mode="w", encoding="utf-8", suffix=".txt", delete=False
+        )
+        cookie_file.write(cookie_data)
+        cookie_file.close()
+        ydl_opts["cookiefile"] = cookie_file.name
 
     if is_youtube_url(url):
         ydl_opts["postprocessors"] = [{
@@ -73,7 +91,21 @@ def download_audio(url: str) -> str:
                 "Try a public video URL, update yt-dlp, or use a local file. "
                 f"Details: {details}"
             ) from exc
+        if "403" in details or "Forbidden" in details:
+            raise RuntimeError(
+                "YouTube rejected the audio request (HTTP 403). "
+                "Update yt-dlp and, for restricted videos, add a Netscape-format "
+                "YOUTUBE_COOKIES secret in Streamlit. Public videos may require "
+                "a different video URL. "
+                f"Details: {details}"
+            ) from exc
         raise RuntimeError(f"Failed to download audio from YouTube: {details}") from exc
+    finally:
+        if cookie_file:
+            try:
+                os.unlink(cookie_file.name)
+            except OSError:
+                pass
 
 
 def is_youtube_url(source: str) -> bool:

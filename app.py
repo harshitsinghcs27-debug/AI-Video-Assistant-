@@ -23,7 +23,13 @@ project_root = Path(__file__).resolve().parent
 for env_file in (project_root / ".env", project_root / ".venv" / ".env"):
     load_dotenv(env_file)
 
-for secret_name in ("MISTRAL_API_KEY", "SARVAM_API_KEY", "WHISPER_MODEL", "SARVAM_STT_MODEL"):
+for secret_name in (
+    "MISTRAL_API_KEY",
+    "SARVAM_API_KEY",
+    "WHISPER_MODEL",
+    "SARVAM_STT_MODEL",
+    "YOUTUBE_COOKIES",
+):
     try:
         secret_value = st.secrets.get(secret_name)
     except Exception:

@@ -20,7 +20,13 @@ import streamlit as st
 from dotenv import load_dotenv
 
 load_dotenv(Path(__file__).resolve().with_name(".env"))
-for secret_name in ("MISTRAL_API_KEY", "SARVAM_API_KEY", "WHISPER_MODEL", "SARVAM_STT_MODEL"):
+for secret_name in (
+    "MISTRAL_API_KEY",
+    "SARVAM_API_KEY",
+    "WHISPER_MODEL",
+    "SARVAM_STT_MODEL",
+    "YOUTUBE_COOKIES",
+):
     try:
         secret_value = st.secrets.get(secret_name)
     except Exception:
