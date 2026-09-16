@@ -27,6 +27,8 @@ MISTRAL_API_KEY=your_mistral_api_key
 MISTRAL_API_KEY = "your_mistral_api_key"
 # Optional, only for videos that return HTTP 403 or require sign-in:
 # YOUTUBE_COOKIES = "# Netscape HTTP Cookie File\n..."
+# Recommended for Streamlit multiline secrets:
+# YOUTUBE_COOKIES_B64 = "base64-encoded-Netscape-cookie-file"
 ```
 
 4. Save the secret and reboot the app.
@@ -36,3 +38,5 @@ The key must be configured in the deployment platform; it cannot be safely commi
 The downloader uses yt-dlp's visionOS player client because YouTube's default client can return HTTP 403 or no usable formats in cloud environments. If a video is still blocked, export cookies in Netscape format from your browser and add the contents as the `YOUTUBE_COOKIES` Streamlit secret. Never commit cookie data to GitHub.
 
 If the app reports that the cookies file is not Netscape format, delete the `YOUTUBE_COOKIES` secret for public videos, or replace it with the raw contents of a Netscape-format `.txt` export. JSON cookie exports are not accepted.
+
+For YouTube's "Sign in to confirm you're not a bot" error, export fresh cookies in Netscape format, base64-encode the complete file, and add the result as `YOUTUBE_COOKIES_B64` in Streamlit Secrets. This avoids TOML multiline parsing problems. Cookies expire and must be refreshed periodically.

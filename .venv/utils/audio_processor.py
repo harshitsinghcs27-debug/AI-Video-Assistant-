@@ -1,5 +1,6 @@
 import os
 import re
+import base64
 import shutil
 import sys
 import tempfile
@@ -58,7 +59,7 @@ def download_audio(url: str) -> str:
     }
 
     cookie_file = None
-    cookie_data = os.getenv("YOUTUBE_COOKIES", "").strip()
+    cookie_data = get_youtube_cookie_data()
     if cookie_data and is_netscape_cookie_data(cookie_data):
         cookie_file = tempfile.NamedTemporaryFile(
             mode="w", encoding="utf-8", suffix=".txt", delete=False
@@ -111,11 +112,12 @@ def download_audio(url: str) -> str:
     if last_error:
         exc = last_error
         details = str(exc)
-        if "Please sign in" in details or "private" in details.lower():
+        if "Please sign in" in details or "private" in details.lower() or "not a bot" in details:
             cleanup_cookie_file()
             raise RuntimeError(
                 "YouTube could not provide this video without sign-in. "
-                "Try a public video URL, update yt-dlp, or use a local file. "
+                "Add fresh Netscape cookies using YOUTUBE_COOKIES_B64, or use a "
+                "public video URL/local file. "
                 f"Details: {details}"
             ) from exc
         if "403" in details or "Forbidden" in details:
@@ -144,6 +146,23 @@ def is_netscape_cookie_data(cookie_data: str) -> bool:
         return False
     data_lines = [line for line in lines if not line.startswith("#")]
     return bool(data_lines) and all(len(line.split("\t")) == 7 for line in data_lines)
+
+
+def get_youtube_cookie_data() -> str:
+    """Read cookies from raw or base64 secrets without accepting JSON exports."""
+    encoded = os.getenv("YOUTUBE_COOKIES_B64", "").strip()
+    if encoded:
+        try:
+            decoded = base64.b64decode(encoded, validate=True).decode("utf-8")
+            if is_netscape_cookie_data(decoded):
+                return decoded.strip()
+        except (ValueError, UnicodeDecodeError):
+            pass
+
+    raw = os.getenv("YOUTUBE_COOKIES", "").strip()
+    if "\\n" in raw and "\n" not in raw:
+        raw = raw.replace("\\n", "\n")
+    return raw
 
 
 def is_youtube_url(source: str) -> bool:

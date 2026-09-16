@@ -26,6 +26,7 @@ for secret_name in (
     "WHISPER_MODEL",
     "SARVAM_STT_MODEL",
     "YOUTUBE_COOKIES",
+    "YOUTUBE_COOKIES_B64",
 ):
     try:
         secret_value = st.secrets.get(secret_name)
