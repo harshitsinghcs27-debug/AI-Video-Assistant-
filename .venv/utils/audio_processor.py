@@ -1,5 +1,6 @@
 import os
 import re
+import shutil
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse, urlunparse
 
@@ -16,9 +17,15 @@ from pydub import AudioSegment
 DOWNLOAD_DIR = Path(__file__).resolve().parents[1] / "downloads"
 DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
-FFMPEG_PATH = Path(r"C:\Users\MyPc\AppData\Local\Microsoft\WinGet\Packages\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\ffmpeg-9.0.1-full_build\bin")
-if FFMPEG_PATH.exists():
-    os.environ["PATH"] = str(FFMPEG_PATH) + os.pathsep + os.environ.get("PATH", "")
+FFMPEG_PATH = os.environ.get("FFMPEG_PATH")
+if FFMPEG_PATH and Path(FFMPEG_PATH).exists():
+    os.environ["PATH"] = FFMPEG_PATH + os.pathsep + os.environ.get("PATH", "")
+
+if not shutil.which("ffmpeg"):
+    raise RuntimeError(
+        "FFmpeg is required for audio processing. Install it or set FFMPEG_PATH "
+        "to the directory containing the ffmpeg executable."
+    )
 
 
 def download_audio(url: str) -> str:
