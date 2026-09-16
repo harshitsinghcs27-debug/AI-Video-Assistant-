@@ -106,6 +106,9 @@ def transcribe_chunk(chunk_path: str, language: str = "english") -> str:
     - english  → Whisper (local model)
     - hinglish → Sarvam (translates to English while transcribing)
     """
+    if str(chunk_path).lower().endswith(".txt"):
+        with open(chunk_path, "r", encoding="utf-8") as transcript_file:
+            return transcript_file.read().strip()
     if language.lower() == "hinglish":
         return transcribe_chunk_sarvam(chunk_path)
     return transcribe_chunk_whisper(chunk_path)

@@ -7,6 +7,8 @@ import tempfile
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse, urlunparse
 
+from youtube_transcript_api import YouTubeTranscriptApi
+
 try:
     import yt_dlp
 except ModuleNotFoundError as exc:
@@ -225,7 +227,14 @@ def process_input(source: str) -> list:
     source = source.strip()
     if source.startswith("http://") or source.startswith("https://"):
         print("Detected remote audio URL. Downloading...")
-        downloaded_path = download_audio(source)
+        try:
+            downloaded_path = download_audio(source)
+        except RuntimeError as download_error:
+            if not is_youtube_url(source):
+                raise
+            print(f"YouTube audio unavailable; trying captions: {download_error}")
+            transcript_path = download_youtube_transcript(source)
+            return [transcript_path]
         if not os.path.exists(downloaded_path):
             raise FileNotFoundError(f"Audio download failed: {downloaded_path}")
         if os.path.splitext(downloaded_path)[1].lower() == ".wav":
@@ -242,3 +251,37 @@ def process_input(source: str) -> list:
     chunks = chunk_audio(wav_path)
     print(f"Audio ready - {len(chunks)} chunk(s) created.")
     return chunks
+
+
+def download_youtube_transcript(url: str) -> str:
+    """Save YouTube captions locally when media download is blocked by YouTube."""
+    normalized_url = normalize_youtube_url(url)
+    parsed = urlparse(normalized_url)
+    video_id = parse_qs(parsed.query).get("v", [""])[0]
+    if not video_id:
+        raise RuntimeError(
+            "YouTube blocked the audio download and this URL has no video ID. "
+            "Try a standard youtube.com/watch URL or upload the video file."
+        )
+
+    try:
+        transcript = YouTubeTranscriptApi().fetch(
+            video_id, languages=["en", "en-US", "hi"]
+        )
+        text = " ".join(snippet.text.strip() for snippet in transcript).strip()
+    except Exception as transcript_error:
+        raise RuntimeError(
+            "YouTube blocked audio and no accessible captions were found. "
+            "Try a public video with captions or upload the media file. "
+            f"Caption details: {transcript_error}"
+        ) from transcript_error
+
+    if not text:
+        raise RuntimeError(
+            "YouTube blocked audio and the video's captions were empty. "
+            "Upload the media file instead."
+        )
+
+    transcript_path = DOWNLOAD_DIR / f"{video_id}_youtube_transcript.txt"
+    transcript_path.write_text(text, encoding="utf-8")
+    return str(transcript_path)

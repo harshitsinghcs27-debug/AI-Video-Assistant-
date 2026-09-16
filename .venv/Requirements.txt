@@ -3,6 +3,7 @@
 
 # ── Audio / Video acquisition ─────────────────────────────────────────────────
 yt-dlp>=2025.1.15                 # Download audio from YouTube URLs
+youtube-transcript-api>=1.2.0    # Caption fallback when YouTube blocks media
 pydub>=0.25.1                     # Audio file manipulation / format conversion
 ffmpeg-python>=0.2.0              # FFmpeg bindings (FFmpeg binary must be installed separately)
 
