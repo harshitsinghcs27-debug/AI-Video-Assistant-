@@ -1,0 +1,26 @@
+# Secrets and local configuration
+.env
+.venv/.env
+
+# Python virtual environment internals; keep project source under .venv
+.venv/Lib/
+.venv/Include/
+.venv/Scripts/
+.venv/share/
+.venv/etc/
+.venv/Library/
+.venv/CACHEDIR.TAG
+.venv/pyvenv.cfg
+.venv/.lock
+
+# Generated Python files
+__pycache__/
+*.py[cod]
+.venv/**/__pycache__/
+
+# Generated media, transcripts, and local embeddings
+downloads/
+vector_db/
+
+# Local editor settings
+.vscode/
