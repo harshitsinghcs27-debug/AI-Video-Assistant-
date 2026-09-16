@@ -49,6 +49,11 @@ def download_audio(url: str) -> str:
         "noplaylist": True,
         "no_warnings": True,
         "restrictfilenames": True,
+        "extractor_args": {
+            "youtube": {
+                "player_client": ["visionos"],
+            },
+        },
         "http_headers": {
             "User-Agent": (
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -90,27 +95,17 @@ def download_audio(url: str) -> str:
             except OSError:
                 pass
 
-    last_error = None
-    for player_client in ("visionos", "web_embedded", "android", "ios"):
-        attempt_opts = dict(ydl_opts)
-        attempt_opts["extractor_args"] = {
-            "youtube": {"player_client": [player_client]}
-        }
-        try:
-            with yt_dlp.YoutubeDL(attempt_opts) as ydl:
-                info = ydl.extract_info(url, download=True)
-                filename = ydl.prepare_filename(info)
-                if is_youtube_url(url):
-                    filename = os.path.splitext(filename)[0] + ".mp3"
-                if not os.path.exists(filename):
-                    raise FileNotFoundError(f"Downloaded audio was not created: {filename}")
-                cleanup_cookie_file()
-                return filename
-        except yt_dlp.utils.DownloadError as exc:
-            last_error = exc
-
-    if last_error:
-        exc = last_error
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            filename = ydl.prepare_filename(info)
+            if is_youtube_url(url):
+                filename = os.path.splitext(filename)[0] + ".mp3"
+            if not os.path.exists(filename):
+                raise FileNotFoundError(f"Downloaded audio was not created: {filename}")
+            cleanup_cookie_file()
+            return filename
+    except yt_dlp.utils.DownloadError as exc:
         details = str(exc)
         if "Please sign in" in details or "private" in details.lower() or "not a bot" in details:
             cleanup_cookie_file()
@@ -133,8 +128,6 @@ def download_audio(url: str) -> str:
         raise RuntimeError(
             f"Failed to download audio from YouTube: {details}{invalid_cookie_message}"
         ) from exc
-    cleanup_cookie_file()
-    raise RuntimeError("Failed to download audio from YouTube: no compatible player client.")
 
 
 def is_netscape_cookie_data(cookie_data: str) -> bool:
