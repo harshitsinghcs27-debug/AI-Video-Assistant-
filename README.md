@@ -33,4 +33,4 @@ MISTRAL_API_KEY = "your_mistral_api_key"
 
 The key must be configured in the deployment platform; it cannot be safely committed to the repository. Without it, transcription still works, but Mistral-powered summaries, extraction, and chat remain disabled.
 
-If YouTube returns HTTP 403, first redeploy so the latest `yt-dlp` dependency is installed and try a public video. For videos blocked by YouTube, export cookies in Netscape format from your browser and add the contents as the `YOUTUBE_COOKIES` Streamlit secret. Never commit cookie data to GitHub.
+The downloader uses yt-dlp's visionOS player client because YouTube's default client can return HTTP 403 or no usable formats in cloud environments. If a video is still blocked, export cookies in Netscape format from your browser and add the contents as the `YOUTUBE_COOKIES` Streamlit secret. Never commit cookie data to GitHub.

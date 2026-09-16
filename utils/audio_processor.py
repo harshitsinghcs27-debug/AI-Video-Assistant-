@@ -48,6 +48,11 @@ def download_audio(url: str) -> str:
         "noplaylist": True,
         "no_warnings": True,
         "restrictfilenames": True,
+        "extractor_args": {
+            "youtube": {
+                "player_client": ["visionos"],
+            },
+        },
         "http_headers": {
             "User-Agent": (
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
