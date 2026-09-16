@@ -20,6 +20,13 @@ import streamlit as st
 from dotenv import load_dotenv
 
 load_dotenv(Path(__file__).resolve().with_name(".env"))
+for secret_name in ("MISTRAL_API_KEY", "SARVAM_API_KEY", "WHISPER_MODEL", "SARVAM_STT_MODEL"):
+    try:
+        secret_value = st.secrets.get(secret_name)
+    except Exception:
+        secret_value = None
+    if secret_value and not os.getenv(secret_name):
+        os.environ[secret_name] = str(secret_value)
 
 from utils.audio_processor import process_input
 from core.transcriber import transcribe_all
