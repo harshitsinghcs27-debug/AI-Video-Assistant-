@@ -64,6 +64,9 @@ def download_audio(url: str) -> str:
             ),
         },
     }
+    youtube_proxy = os.getenv("YOUTUBE_PROXY", "").strip()
+    if youtube_proxy:
+        ydl_opts["proxy"] = youtube_proxy
 
     cookie_file = None
     cookie_data = get_youtube_cookie_data()
@@ -264,17 +267,32 @@ def download_youtube_transcript(url: str) -> str:
             "Try a standard youtube.com/watch URL or upload the video file."
         )
 
+    youtube_proxy = os.getenv("YOUTUBE_PROXY", "").strip()
     try:
-        transcript = YouTubeTranscriptApi().fetch(
+        if youtube_proxy:
+            from youtube_transcript_api.proxies import GenericProxyConfig
+
+            transcript_api = YouTubeTranscriptApi(
+                proxy_config=GenericProxyConfig(
+                    http_url=youtube_proxy,
+                    https_url=youtube_proxy,
+                )
+            )
+        else:
+            transcript_api = YouTubeTranscriptApi()
+        transcript = transcript_api.fetch(
             video_id, languages=["en", "en-US", "hi"]
         )
         text = " ".join(snippet.text.strip() for snippet in transcript).strip()
     except Exception as transcript_error:
-        raise RuntimeError(
-            "YouTube blocked audio and no accessible captions were found. "
-            "Try a public video with captions or upload the media file. "
-            f"Caption details: {transcript_error}"
-        ) from transcript_error
+        text = download_youtube_subtitles_with_ytdlp(url, youtube_proxy)
+        if not text:
+            raise RuntimeError(
+                "YouTube blocked audio and no accessible captions were found. "
+                "Set YOUTUBE_PROXY to a working HTTPS proxy in Streamlit, or upload "
+                "the media file. "
+                f"Caption details: {transcript_error}"
+            ) from transcript_error
 
     if not text:
         raise RuntimeError(
@@ -285,3 +303,46 @@ def download_youtube_transcript(url: str) -> str:
     transcript_path = DOWNLOAD_DIR / f"{video_id}_youtube_transcript.txt"
     transcript_path.write_text(text, encoding="utf-8")
     return str(transcript_path)
+
+
+def download_youtube_subtitles_with_ytdlp(url: str, proxy: str = "") -> str:
+    """Use yt-dlp subtitle endpoints as a second caption route."""
+    subtitle_template = str(DOWNLOAD_DIR / "%(id)s.%(language)s.vtt")
+    options = {
+        "skip_download": True,
+        "writesubtitles": True,
+        "writeautomaticsub": True,
+        "subtitleslangs": ["en", "en-US", "hi"],
+        "subtitlesformat": "vtt",
+        "outtmpl": subtitle_template,
+        "quiet": True,
+        "no_warnings": True,
+        "extractor_args": {"youtube": {"player_client": ["visionos"]}},
+    }
+    if proxy:
+        options["proxy"] = proxy
+    try:
+        with yt_dlp.YoutubeDL(options) as ydl:
+            ydl.download([url])
+    except yt_dlp.utils.DownloadError:
+        return ""
+
+    subtitle_files = sorted(DOWNLOAD_DIR.glob(f"{video_id_from_url(url)}.*.vtt"))
+    if not subtitle_files:
+        return ""
+    subtitle_text = subtitle_files[0].read_text(encoding="utf-8")
+    for subtitle_file in subtitle_files:
+        subtitle_file.unlink(missing_ok=True)
+    lines = []
+    for line in subtitle_text.splitlines():
+        line = re.sub(r"<[^>]+>", "", line).strip()
+        if not line or line == "WEBVTT" or "-->" in line or line.isdigit():
+            continue
+        if not lines or lines[-1] != line:
+            lines.append(line)
+    return " ".join(lines).strip()
+
+
+def video_id_from_url(url: str) -> str:
+    parsed = urlparse(normalize_youtube_url(url))
+    return parse_qs(parsed.query).get("v", [""])[0]

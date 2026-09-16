@@ -30,6 +30,7 @@ for secret_name in (
     "SARVAM_STT_MODEL",
     "YOUTUBE_COOKIES",
     "YOUTUBE_COOKIES_B64",
+    "YOUTUBE_PROXY",
 ):
     try:
         secret_value = st.secrets.get(secret_name)
