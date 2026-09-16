@@ -1,6 +1,7 @@
 import os
 import re
 import shutil
+import sys
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse, urlunparse
 
@@ -12,6 +13,14 @@ except ModuleNotFoundError as exc:
         "Use the project venv: .\\.venv\\Scripts\\python.exe -m pip install -r .\\.venv\\Requirements.txt"
     ) from exc
 
+try:
+    import audioop
+except ModuleNotFoundError:
+    raise RuntimeError(
+        "Audio processing requires Python 3.12 or the audioop-lts package."
+    )
+
+sys.modules.setdefault("pyaudioop", audioop)
 from pydub import AudioSegment
 
 DOWNLOAD_DIR = Path(__file__).resolve().parents[1] / "downloads"
