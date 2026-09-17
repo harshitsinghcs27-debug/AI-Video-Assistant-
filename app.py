@@ -241,7 +241,7 @@ def run_pipeline(source: str, language: str) -> dict:
     status = st.status("🚀 Starting AI Video Assistant...", expanded=True)
 
     status.write("**Step 1/5** · Processing input...")
-    chunks = process_input(source)
+    chunks = process_input(source, language=language)
 
     status.write("**Step 2/5** · Transcribing audio...")
     transcript = transcribe_all(chunks, language=language)

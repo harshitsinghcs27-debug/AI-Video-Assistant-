@@ -9,6 +9,7 @@ from urllib.parse import parse_qs, urlparse, urlunparse
 
 from youtube_transcript_api import YouTubeTranscriptApi
 from deep_translator import GoogleTranslator
+from indic_transliteration import sanscript
 
 try:
     import yt_dlp
@@ -222,7 +223,7 @@ def chunk_audio(wav_path: str, chunk_minutes: int = 10) -> list[str]:
     return chunk_paths
 
 
-def process_input(source: str) -> list:
+def process_input(source: str, language: str = "english") -> list:
     """Process the input source (URL or local file) and return a list of WAV file paths."""
     source = source.strip()
     if source.startswith("http://") or source.startswith("https://"):
@@ -233,7 +234,7 @@ def process_input(source: str) -> list:
             if not is_youtube_url(source):
                 raise
             print(f"YouTube audio unavailable; trying captions: {download_error}")
-            transcript_path = download_youtube_transcript(source)
+            transcript_path = download_youtube_transcript(source, language)
             return [transcript_path]
         if not os.path.exists(downloaded_path):
             raise FileNotFoundError(f"Audio download failed: {downloaded_path}")
@@ -253,7 +254,7 @@ def process_input(source: str) -> list:
     return chunks
 
 
-def download_youtube_transcript(url: str) -> str:
+def download_youtube_transcript(url: str, language: str = "english") -> str:
     """Save YouTube captions locally when media download is blocked by YouTube."""
     normalized_url = normalize_youtube_url(url)
     parsed = urlparse(normalized_url)
@@ -271,9 +272,9 @@ def download_youtube_transcript(url: str) -> str:
         )
         text = " ".join(snippet.text.strip() for snippet in transcript).strip()
         if getattr(transcript, "language_code", "") == "hi":
-            text = translate_hindi_to_english(text)
+            text = convert_hindi_caption(text, language)
     except Exception as transcript_error:
-        text = download_youtube_subtitles_with_ytdlp(url)
+        text = download_youtube_subtitles_with_ytdlp(url, language)
         if not text:
             raise RuntimeError(
                 "YouTube blocked audio and no accessible captions were found. "
@@ -292,7 +293,7 @@ def download_youtube_transcript(url: str) -> str:
     return str(transcript_path)
 
 
-def download_youtube_subtitles_with_ytdlp(url: str) -> str:
+def download_youtube_subtitles_with_ytdlp(url: str, language: str = "english") -> str:
     """Use yt-dlp subtitle endpoints as a second caption route."""
     subtitle_template = str(DOWNLOAD_DIR / "%(id)s.%(language)s.vtt")
     options = {
@@ -330,7 +331,14 @@ def download_youtube_subtitles_with_ytdlp(url: str) -> str:
         if not lines or lines[-1] != line:
             lines.append(line)
     text = " ".join(lines).strip()
-    return translate_hindi_to_english(text) if is_hindi else text
+    return convert_hindi_caption(text, language) if is_hindi else text
+
+
+def convert_hindi_caption(text: str, language: str) -> str:
+    """Convert Hindi captions to the selected English or Hinglish output."""
+    if language.lower() == "hinglish":
+        return sanscript.transliterate(text, sanscript.DEVANAGARI, sanscript.HK)
+    return translate_hindi_to_english(text)
 
 
 def translate_hindi_to_english(text: str) -> str:
@@ -341,7 +349,7 @@ def translate_hindi_to_english(text: str) -> str:
     try:
         translator = GoogleTranslator(source="hi", target="en")
         chunks = [text[index:index + 3500] for index in range(0, len(text), 3500)]
-        translated = [translator.translate(chunk) for chunk in chunks]
+        translated = translator.translate_batch(chunks)
         return " ".join(part.strip() for part in translated if part and part.strip())
     except Exception as error:
         print(f"Hindi caption translation unavailable; using original text: {error}")

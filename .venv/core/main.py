@@ -13,7 +13,7 @@ load_dotenv()
 def run_pipeline(source: str, language: str = "english") -> dict:
     print("starting AI Video Assistant")
 
-    chunks = process_input(source)
+    chunks = process_input(source, language=language)
     transcript = transcribe_all(chunks, language=language)
     print(f"raw transcription (first 300 characters) {transcript[:300]}")
 
