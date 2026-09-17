@@ -278,7 +278,8 @@ def download_youtube_transcript(url: str, language: str = "english") -> str:
         if not text:
             raise RuntimeError(
                 "YouTube blocked audio and no accessible captions were found. "
-                "Upload the media file. "
+                "For cloud/IP blocks, add fresh Netscape cookies as "
+                "YOUTUBE_COOKIES_B64 or upload the media file. "
                 f"Caption details: {transcript_error}"
             ) from transcript_error
 
@@ -307,11 +308,26 @@ def download_youtube_subtitles_with_ytdlp(url: str, language: str = "english") -
         "no_warnings": True,
         "extractor_args": {"youtube": {"player_client": ["visionos"]}},
     }
+    cookie_file = None
+    cookie_data = get_youtube_cookie_data()
+    if cookie_data and is_netscape_cookie_data(cookie_data):
+        cookie_file = tempfile.NamedTemporaryFile(
+            mode="w", encoding="utf-8", suffix=".txt", delete=False
+        )
+        cookie_file.write(cookie_data)
+        cookie_file.close()
+        options["cookiefile"] = cookie_file.name
     try:
         with yt_dlp.YoutubeDL(options) as ydl:
             ydl.download([url])
     except yt_dlp.utils.DownloadError:
         return ""
+    finally:
+        if cookie_file:
+            try:
+                os.unlink(cookie_file.name)
+            except OSError:
+                pass
 
     subtitle_files = sorted(DOWNLOAD_DIR.glob(f"{video_id_from_url(url)}.*.vtt"))
     if not subtitle_files:
