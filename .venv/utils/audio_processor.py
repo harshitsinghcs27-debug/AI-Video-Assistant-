@@ -330,6 +330,7 @@ def download_youtube_subtitles_with_ytdlp(url: str, language: str = "english") -
         "outtmpl": subtitle_template,
         "quiet": True,
         "no_warnings": True,
+        "ignoreerrors": True,
         "extractor_args": {"youtube": {"player_client": ["visionos"]}},
     }
     cookie_file = None
@@ -348,7 +349,7 @@ def download_youtube_subtitles_with_ytdlp(url: str, language: str = "english") -
         with yt_dlp.YoutubeDL(options) as ydl:
             ydl.download([url])
     except yt_dlp.utils.DownloadError:
-        return ""
+        pass
     finally:
         if cookie_file:
             try:
