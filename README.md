@@ -29,6 +29,8 @@ MISTRAL_API_KEY = "your_mistral_api_key"
 # YOUTUBE_COOKIES = "# Netscape HTTP Cookie File\n..."
 # Recommended for Streamlit multiline secrets:
 # YOUTUBE_COOKIES_B64 = "base64-encoded-Netscape-cookie-file"
+# Optional for cloud IP blocks; use a real URL with scheme and port:
+# YOUTUBE_PROXY = "https://user:password@proxy-host:port"
 ```
 
 4. Save the secret and reboot the app.
@@ -38,7 +40,7 @@ The key must be configured in the deployment platform; it cannot be safely commi
 The downloader uses yt-dlp's visionOS player client because YouTube's default client can return HTTP 403 or no usable formats in cloud environments. If a video is still blocked, export cookies in Netscape format from your browser and add the contents as the `YOUTUBE_COOKIES` Streamlit secret. Never commit cookie data to GitHub.
 
 When YouTube blocks media downloads on a cloud host, the app automatically falls back to the video's accessible captions and continues the pipeline without downloading audio. Videos with no accessible captions still require valid cookies or a local upload.
-If both audio and captions are blocked with an IP-block message, upload the media file instead.
+If both audio and captions are blocked with an IP-block message, configure a working `YOUTUBE_PROXY`, add fresh cookies, or upload the media file. A value like `proxy-host:port` without a URL scheme is invalid and will be ignored.
 
 If the app reports that the cookies file is not Netscape format, delete the `YOUTUBE_COOKIES` secret for public videos, or replace it with the raw contents of a Netscape-format `.txt` export. JSON cookie exports are not accepted.
 

@@ -161,6 +161,20 @@ def get_youtube_cookie_data() -> str:
     return raw
 
 
+def get_youtube_proxy() -> str:
+    """Return a valid YouTube proxy URL, ignoring malformed configuration."""
+    proxy = os.getenv("YOUTUBE_PROXY", "").strip()
+    parsed = urlparse(proxy)
+    if parsed.scheme not in {"http", "https", "socks4", "socks5"} or not parsed.hostname:
+        return ""
+    try:
+        if parsed.port is not None and not 1 <= parsed.port <= 65535:
+            return ""
+    except ValueError:
+        return ""
+    return proxy
+
+
 def is_youtube_url(source: str) -> bool:
     """Return whether a source uses a supported YouTube host."""
     try:
@@ -267,6 +281,16 @@ def download_youtube_transcript(url: str, language: str = "english") -> str:
 
     try:
         transcript_api = YouTubeTranscriptApi()
+        youtube_proxy = get_youtube_proxy()
+        if youtube_proxy:
+            from youtube_transcript_api.proxies import GenericProxyConfig
+
+            transcript_api = YouTubeTranscriptApi(
+                proxy_config=GenericProxyConfig(
+                    http_url=youtube_proxy,
+                    https_url=youtube_proxy,
+                )
+            )
         transcript = transcript_api.fetch(
             video_id, languages=["en", "en-US", "hi"]
         )
@@ -310,6 +334,9 @@ def download_youtube_subtitles_with_ytdlp(url: str, language: str = "english") -
     }
     cookie_file = None
     cookie_data = get_youtube_cookie_data()
+    youtube_proxy = get_youtube_proxy()
+    if youtube_proxy:
+        options["proxy"] = youtube_proxy
     if cookie_data and is_netscape_cookie_data(cookie_data):
         cookie_file = tempfile.NamedTemporaryFile(
             mode="w", encoding="utf-8", suffix=".txt", delete=False
