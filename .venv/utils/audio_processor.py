@@ -8,6 +8,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse, urlunparse
 
 from youtube_transcript_api import YouTubeTranscriptApi
+from deep_translator import GoogleTranslator
 
 try:
     import yt_dlp
@@ -269,6 +270,8 @@ def download_youtube_transcript(url: str) -> str:
             video_id, languages=["en", "en-US", "hi"]
         )
         text = " ".join(snippet.text.strip() for snippet in transcript).strip()
+        if getattr(transcript, "language_code", "") == "hi":
+            text = translate_hindi_to_english(text)
     except Exception as transcript_error:
         text = download_youtube_subtitles_with_ytdlp(url)
         if not text:
@@ -312,7 +315,11 @@ def download_youtube_subtitles_with_ytdlp(url: str) -> str:
     subtitle_files = sorted(DOWNLOAD_DIR.glob(f"{video_id_from_url(url)}.*.vtt"))
     if not subtitle_files:
         return ""
-    subtitle_text = subtitle_files[0].read_text(encoding="utf-8")
+    subtitle_file = next(
+        (path for path in subtitle_files if ".hi." in path.name), subtitle_files[0]
+    )
+    is_hindi = ".hi." in subtitle_file.name
+    subtitle_text = subtitle_file.read_text(encoding="utf-8")
     for subtitle_file in subtitle_files:
         subtitle_file.unlink(missing_ok=True)
     lines = []
@@ -322,7 +329,23 @@ def download_youtube_subtitles_with_ytdlp(url: str) -> str:
             continue
         if not lines or lines[-1] != line:
             lines.append(line)
-    return " ".join(lines).strip()
+    text = " ".join(lines).strip()
+    return translate_hindi_to_english(text) if is_hindi else text
+
+
+def translate_hindi_to_english(text: str) -> str:
+    """Translate Hindi caption text to English in service-sized chunks."""
+    if not text.strip():
+        return text
+
+    try:
+        translator = GoogleTranslator(source="hi", target="en")
+        chunks = [text[index:index + 3500] for index in range(0, len(text), 3500)]
+        translated = [translator.translate(chunk) for chunk in chunks]
+        return " ".join(part.strip() for part in translated if part and part.strip())
+    except Exception as error:
+        print(f"Hindi caption translation unavailable; using original text: {error}")
+        return text
 
 
 def video_id_from_url(url: str) -> str:
