@@ -266,7 +266,7 @@ def download_youtube_transcript(url: str) -> str:
     try:
         transcript_api = YouTubeTranscriptApi()
         transcript = transcript_api.fetch(
-            video_id, languages=["en", "en-US", "hi"]
+            video_id, languages=["en", "en-US"]
         )
         text = " ".join(snippet.text.strip() for snippet in transcript).strip()
     except Exception as transcript_error:
@@ -296,7 +296,7 @@ def download_youtube_subtitles_with_ytdlp(url: str) -> str:
         "skip_download": True,
         "writesubtitles": True,
         "writeautomaticsub": True,
-        "subtitleslangs": ["en", "en-US", "hi"],
+        "subtitleslangs": ["en", "en-US"],
         "subtitlesformat": "vtt",
         "outtmpl": subtitle_template,
         "quiet": True,
