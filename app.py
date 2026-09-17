@@ -11,6 +11,17 @@ chat interface for the RAG chain.
 """
 
 import os
+
+for key in (
+    "HTTP_PROXY",
+    "HTTPS_PROXY",
+    "ALL_PROXY",
+    "http_proxy",
+    "https_proxy",
+    "all_proxy",
+):
+    os.environ.pop(key, None)
+
 import re
 import tempfile
 from datetime import datetime
@@ -23,6 +34,16 @@ project_root = Path(__file__).resolve().parent
 for env_file in (project_root / ".env", project_root / ".venv" / ".env"):
     load_dotenv(env_file)
 
+for key in (
+    "HTTP_PROXY",
+    "HTTPS_PROXY",
+    "ALL_PROXY",
+    "http_proxy",
+    "https_proxy",
+    "all_proxy",
+):
+    os.environ.pop(key, None)
+
 for secret_name in (
     "MISTRAL_API_KEY",
     "SARVAM_API_KEY",
@@ -30,7 +51,6 @@ for secret_name in (
     "SARVAM_STT_MODEL",
     "YOUTUBE_COOKIES",
     "YOUTUBE_COOKIES_B64",
-    "YOUTUBE_PROXY",
 ):
     try:
         secret_value = st.secrets.get(secret_name)

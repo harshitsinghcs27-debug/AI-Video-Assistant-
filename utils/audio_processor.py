@@ -64,10 +64,6 @@ def download_audio(url: str) -> str:
             ),
         },
     }
-    youtube_proxy = os.getenv("YOUTUBE_PROXY", "").strip()
-    if youtube_proxy:
-        ydl_opts["proxy"] = youtube_proxy
-
     cookie_file = None
     cookie_data = get_youtube_cookie_data()
     if cookie_data and is_netscape_cookie_data(cookie_data):
@@ -267,30 +263,18 @@ def download_youtube_transcript(url: str) -> str:
             "Try a standard youtube.com/watch URL or upload the video file."
         )
 
-    youtube_proxy = os.getenv("YOUTUBE_PROXY", "").strip()
     try:
-        if youtube_proxy:
-            from youtube_transcript_api.proxies import GenericProxyConfig
-
-            transcript_api = YouTubeTranscriptApi(
-                proxy_config=GenericProxyConfig(
-                    http_url=youtube_proxy,
-                    https_url=youtube_proxy,
-                )
-            )
-        else:
-            transcript_api = YouTubeTranscriptApi()
+        transcript_api = YouTubeTranscriptApi()
         transcript = transcript_api.fetch(
             video_id, languages=["en", "en-US", "hi"]
         )
         text = " ".join(snippet.text.strip() for snippet in transcript).strip()
     except Exception as transcript_error:
-        text = download_youtube_subtitles_with_ytdlp(url, youtube_proxy)
+        text = download_youtube_subtitles_with_ytdlp(url)
         if not text:
             raise RuntimeError(
                 "YouTube blocked audio and no accessible captions were found. "
-                "Set YOUTUBE_PROXY to a working HTTPS proxy in Streamlit, or upload "
-                "the media file. "
+                "Upload the media file. "
                 f"Caption details: {transcript_error}"
             ) from transcript_error
 
@@ -305,7 +289,7 @@ def download_youtube_transcript(url: str) -> str:
     return str(transcript_path)
 
 
-def download_youtube_subtitles_with_ytdlp(url: str, proxy: str = "") -> str:
+def download_youtube_subtitles_with_ytdlp(url: str) -> str:
     """Use yt-dlp subtitle endpoints as a second caption route."""
     subtitle_template = str(DOWNLOAD_DIR / "%(id)s.%(language)s.vtt")
     options = {
@@ -319,8 +303,6 @@ def download_youtube_subtitles_with_ytdlp(url: str, proxy: str = "") -> str:
         "no_warnings": True,
         "extractor_args": {"youtube": {"player_client": ["visionos"]}},
     }
-    if proxy:
-        options["proxy"] = proxy
     try:
         with yt_dlp.YoutubeDL(options) as ydl:
             ydl.download([url])

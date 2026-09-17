@@ -38,9 +38,7 @@ The key must be configured in the deployment platform; it cannot be safely commi
 The downloader uses yt-dlp's visionOS player client because YouTube's default client can return HTTP 403 or no usable formats in cloud environments. If a video is still blocked, export cookies in Netscape format from your browser and add the contents as the `YOUTUBE_COOKIES` Streamlit secret. Never commit cookie data to GitHub.
 
 When YouTube blocks media downloads on a cloud host, the app automatically falls back to the video's accessible captions and continues the pipeline without downloading audio. Videos with no accessible captions still require valid cookies or a local upload.
-If both audio and captions are blocked with an IP-block message, add a paid HTTPS proxy as `YOUTUBE_PROXY` in Streamlit Secrets. A proxy is required because the block is applied to the cloud server's IP; changing Python code or yt-dlp versions cannot remove that restriction. Do not commit proxy credentials.
-# Required when YouTube blocks Streamlit Cloud's IP:
-# YOUTUBE_PROXY = "https://user:password@proxy-host:port"
+If both audio and captions are blocked with an IP-block message, upload the media file instead.
 
 If the app reports that the cookies file is not Netscape format, delete the `YOUTUBE_COOKIES` secret for public videos, or replace it with the raw contents of a Netscape-format `.txt` export. JSON cookie exports are not accepted.
 
